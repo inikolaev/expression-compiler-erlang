@@ -1,5 +1,5 @@
 -module(compiler).
--export([print/1, eval/2, compile/1, execute/3]).
+-export([print/1, eval/2, simplify/1, compile/1, execute/3]).
 
 %
 % TYPES
@@ -43,36 +43,36 @@
 %
 % Parses string expression
 %
--spec parse(string()) -> {expr(), string()}.
+%-spec parse(string()) -> {expr(), string()}.
 
-parse($( | Rest) ->
-    {E1,Rest1} = parse(Rest),
-    [OP|Rest2] = Rest1,
-    {E2, Rest3} = parse(Rest2),
-    [$)|RestFinal] = Rest3,
-    {case OP of 
-         $+ -> {add, E1, E2}; 
-         $* -> {mul, E1, E2} 
-     end, RestFinal};
-parse(Ch | Rest) when $a <= Ch andalso Ch <= $z ->
-    {Succeeds, Remainder} = get_while(fun is_alpha/1, Rest),
-    {{var, list_to_atom([Ch | Succeeds])}, Remainder}.
+%parse($( | Rest) ->
+%    {E1,Rest1} = parse(Rest),
+%    [OP|Rest2] = Rest1,
+%    {E2, Rest3} = parse(Rest2),
+%    [$)|RestFinal] = Rest3,
+%    {case OP of 
+%         $+ -> {add, E1, E2}; 
+%         $* -> {mul, E1, E2} 
+%     end, RestFinal};
+%parse(Ch | Rest) when $a <= Ch andalso Ch <= $z ->
+%    {Succeeds, Remainder} = get_while(fun is_alpha/1, Rest),
+%    {{var, list_to_atom([Ch | Succeeds])}, Remainder}.
 
 
--spec get_while(fun (T) -> boolean(), [T]) -> {[T], [T]}.
+%-spec get_while(fun (T) -> boolean(), [T]) -> {[T], [T]}.
 
-get_while(P, [Ch | Rest]) ->
-    case P(Ch) of
-        true ->
-            {Succeeeds, Remainder} = get_while(P, Rest),
-            {[Ch, Succeeds], Remainder};
-        false ->
-            {[], [Ch | Rest]}
-    end;
-get_while(_P, []) ->
-    {[], []}.
+%get_while(P, [Ch | Rest]) ->
+%    case P(Ch) of
+%        true ->
+%            {Succeeeds, Remainder} = get_while(P, Rest),
+%            {[Ch, Succeeds], Remainder};
+%        false ->
+%            {[], [Ch | Rest]}
+%    end;
+%get_while(_P, []) ->
+%    {[], []}.
 
-is_alpha(Ch) -> $a <= Ch andalso Ch <= $z.
+%is_alpha(Ch) -> $a <= Ch andalso Ch <= $z.
 
 
 %
@@ -114,6 +114,32 @@ lookup(K, [{K,V}|_]) ->
     V;
 lookup(K, [_|Rest]) ->
     lookup(K, Rest).
+
+
+%
+% Simplifies an expression
+%
+-spec simplify(expr()) -> expr().
+
+simplify({add, {num, 0}, E}) -> E;
+simplify({add, E, {num, 0}}) -> E;
+simplify({mul, {num, 1}, E}) -> E;
+simplify({mul, E, {num, 1}}) -> E;
+simplify({mul, {num, 0}, _}) -> {num, 0};
+simplify({mul, _, {num, 0}}) -> {num, 0};
+simplify({add, {num, N1}, {num, N2}}) -> 
+    {num, N1 + N2};
+simplify({mul, {num, N1}, {num, N2}}) -> 
+    {num, N1 * N2};
+simplify({O, E1, E2}) ->
+    R1 = simplify(E1),
+    R2 = simplify(E2),
+    case {R1, R2} of
+        {{num, _}, {num, _}} -> simplify({O, R1, R2});
+        _ -> {O, R1, R2}
+    end;
+simplify(E) ->
+    E.
 
 
 %
