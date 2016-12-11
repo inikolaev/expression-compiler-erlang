@@ -36,28 +36,32 @@ Here is an example that parses expression, compiles and executes:
 
 ```
 1> {Expression, _} = compiler:parse("(2+((2*3)+x))").
+{{add,{num,1},{add,{mul,{num,2},{num,3}},{var,x}}},[]}
+
 2> compiler:print(Expression).
 "(2 + ((2 * 3) + x))"
 
 3> SimplifiedExpression = compiler:simplify(Expression).
-4> compiler:print(SimplifiedExpression).
-{add,{num,2},{add,{num,6},{var,x}}}
+{add,{num,8},{var,x}}
 
-5> compiler:eval([{x, 10}], Expression).
+5> compiler:print(SimplifiedExpression).
+"(8 + x)"
+
+6> compiler:eval([{x, 10}], Expression).
 18
 
-6> compiler:eval([{x, 10}], SimplifiedExpression).
+7> compiler:eval([{x, 10}], SimplifiedExpression).
 18
 
-7> Program = compiler:compile(Expression).
+8> Program = compiler:compile(Expression).
 [{push,2},{push,2},{push,3},{mul},{fetch,x},{add},{add}]
 
-8> SimplifiedProgram = compiler:compile(SimplifiedExpression).
-[{push,2},{push,6},{fetch,x},{add},{add}]
+9> SimplifiedProgram = compiler:compile(SimplifiedExpression).
+[{push,8},{fetch,x},{add}]
 
-9> compiler:execute(Program, [], []).
+10> compiler:execute(Program, [{x, 10}], []).
 18
 
-10> compiler:execute(SimplifiedProgram, [], []).
+11> compiler:execute(SimplifiedProgram, [{x, 10}], []).
 18
 ```
