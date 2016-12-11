@@ -140,14 +140,29 @@ simplify({add, {num, N1}, {add, {num, N2}, {var, V}}}) ->
     {add, {num, N1 + N2}, {var, V}};
 simplify({add, {num, N1}, {add, {var, V}, {num, N2}}}) -> 
     {add, {num, N1 + N2}, {var, V}};
+simplify({add, {add, {num, N2}, {var, V}}, {num, N1}}) -> 
+    {add, {num, N1 + N2}, {var, V}};
+simplify({add, {add, {var, V}, {num, N2}}, {num, N1}}) -> 
+    {add, {num, N1 + N2}, {var, V}};
+simplify({mul, {num, N1}, {mul, {num, N2}, {var, V}}}) -> 
+    {mul, {num, N1 * N2}, {var, V}};
+simplify({mul, {num, N1}, {mul, {var, V}, {num, N2}}}) -> 
+    {mul, {num, N1 * N2}, {var, V}};
+simplify({mul, {mul, {num, N2}, {var, V}}, {num, N1}}) -> 
+    {mul, {num, N1 * N2}, {var, V}};
+simplify({mul, {mul, {var, V}, {num, N2}}, {num, N1}}) -> 
+    {mul, {num, N1 * N2}, {var, V}};
 simplify({O, {num, N}, {var, V}}) -> 
     {O, {num, N}, {var, V}};
 simplify({O, {var, V}, {num, N}}) -> 
     {O, {num, N}, {var, V}};
 simplify({O, E1, E2}) ->
-    R1 = simplify(E1),
-    R2 = simplify(E2),
-    simplify({O, R1, R2});
+    SE1 = simplify(E1),
+    SE2 = simplify(E2),
+    case {SE1, SE2} of
+        {E1, E2} -> {O, E1, E2};
+        _ -> simplify({O, SE1, SE2})
+    end;
 simplify(E) ->
     E.
 
