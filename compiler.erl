@@ -136,13 +136,18 @@ simplify({add, {num, N1}, {num, N2}}) ->
     {num, N1 + N2};
 simplify({mul, {num, N1}, {num, N2}}) -> 
     {num, N1 * N2};
+simplify({add, {num, N1}, {add, {num, N2}, {var, V}}}) -> 
+    {add, {num, N1 + N2}, {var, V}};
+simplify({add, {num, N1}, {add, {var, V}, {num, N2}}}) -> 
+    {add, {num, N1 + N2}, {var, V}};
+simplify({O, {num, N}, {var, V}}) -> 
+    {O, {num, N}, {var, V}};
+simplify({O, {var, V}, {num, N}}) -> 
+    {O, {num, N}, {var, V}};
 simplify({O, E1, E2}) ->
     R1 = simplify(E1),
     R2 = simplify(E2),
-    case {R1, R2} of
-        {{num, _}, {num, _}} -> simplify({O, R1, R2});
-        _ -> {O, R1, R2}
-    end;
+    simplify({O, R1, R2});
 simplify(E) ->
     E.
 
