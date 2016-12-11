@@ -1,5 +1,5 @@
 -module(compiler).
--export([print/1, eval/2, simplify/1, compile/1, execute/3]).
+-export([parse/1, print/1, eval/2, simplify/1, compile/1, execute/3]).
 
 %
 % TYPES
@@ -43,36 +43,41 @@
 %
 % Parses string expression
 %
-%-spec parse(string()) -> {expr(), string()}.
+-spec parse(string()) -> {expr(), string()}.
 
-%parse($( | Rest) ->
-%    {E1,Rest1} = parse(Rest),
-%    [OP|Rest2] = Rest1,
-%    {E2, Rest3} = parse(Rest2),
-%    [$)|RestFinal] = Rest3,
-%    {case OP of 
-%         $+ -> {add, E1, E2}; 
-%         $* -> {mul, E1, E2} 
-%     end, RestFinal};
-%parse(Ch | Rest) when $a <= Ch andalso Ch <= $z ->
-%    {Succeeds, Remainder} = get_while(fun is_alpha/1, Rest),
-%    {{var, list_to_atom([Ch | Succeeds])}, Remainder}.
+parse([$(|Rest]) ->
+    {E1,Rest1} = parse(Rest),
+    [OP|Rest2] = Rest1,
+    {E2, Rest3} = parse(Rest2),
+    [$)|RestFinal] = Rest3,
+    {case OP of 
+         $+ -> {add, E1, E2}; 
+         $* -> {mul, E1, E2} 
+     end, RestFinal};
+parse([Ch|Rest]) when $a =< Ch andalso Ch =< $z ->
+    {Succeeds, Remainder} = get_while(fun is_alpha/1, Rest),
+    {{var, list_to_atom([Ch | Succeeds])}, Remainder};
+parse([Ch|Rest]) when $0 =< Ch andalso Ch =< $9 ->
+    {Succeeds, Remainder} = get_while(fun is_digit/1, Rest),
+    {{num, list_to_integer([Ch | Succeeds])}, Remainder}.
 
 
-%-spec get_while(fun (T) -> boolean(), [T]) -> {[T], [T]}.
+-spec get_while(fun ((T) -> boolean()), [T]) -> {[T], [T]}.
 
-%get_while(P, [Ch | Rest]) ->
-%    case P(Ch) of
-%        true ->
-%            {Succeeeds, Remainder} = get_while(P, Rest),
-%            {[Ch, Succeeds], Remainder};
-%        false ->
-%            {[], [Ch | Rest]}
-%    end;
-%get_while(_P, []) ->
-%    {[], []}.
+get_while(P, [Ch | Rest]) ->
+    case P(Ch) of
+        true ->
+            {Succeeds, Remainder} = get_while(P, Rest),
+            {[Ch, Succeeds], Remainder};
+        false ->
+            {[], [Ch | Rest]}
+    end;
+get_while(_P, []) ->
+    {[], []}.
 
-%is_alpha(Ch) -> $a <= Ch andalso Ch <= $z.
+is_alpha(Ch) -> $a =< Ch andalso Ch =< $z.
+
+is_digit(Ch) -> $0 =< Ch andalso Ch =< $9.
 
 
 %
