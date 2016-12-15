@@ -1,5 +1,5 @@
 -module(compiler).
--export([parse/1, print/1, eval/2, simplify/1, compile/1, execute/3]).
+-export([tokenize/1, parse/1, print/1, eval/2, simplify/1, compile/1, execute/3]).
 
 %
 % TYPES
@@ -36,16 +36,42 @@
 %
 -type stack()       :: [integer()].
 
+-type token()       :: bracket | digit | symbol | operator. 
+-type tokens()      :: [token()].
+
 %
 % FUNCTIONS
 %
+
+%
+% Tokenize string expression
+%
+-spec tokenize(string()) -> tokens().
+
+tokenize([$\s | Rest]) -> 
+    tokenize(Rest);
+tokenize([T | Rest]) when T == $( ; T == $) -> 
+    [{bracket, T} | tokenize(Rest)];
+tokenize([T | Rest]) when T == $+ ; T == $* ; T == $- ; T == $/ -> 
+    [{operator, T} | tokenize(Rest)];
+tokenize([T | Rest]) when $0 =< T, T =< $9 ->
+    {Succeeds, Remainder} = get_while(fun is_digit/1, Rest),
+    [{digit, list_to_integer([T | Succeeds])} | tokenize(Remainder)];
+tokenize([T | Rest]) when $a =< T, T =< $z ->
+    {Succeeds, Remainder} = get_while(fun is_alpha/1, Rest),
+    [{symbol, list_to_atom([T | Succeeds])} | tokenize(Remainder)];
+tokenize([]) -> 
+    [].
+
 
 %
 % Parses string expression
 %
 -spec parse(string()) -> {expr(), string()}.
 
-parse([$(|Rest]) ->
+parse([$\s | Rest]) ->
+    parse(Rest);
+parse([$( | Rest]) ->
     {E1,Rest1} = parse(Rest),
     [OP|Rest2] = Rest1,
     {E2, Rest3} = parse(Rest2),
@@ -68,7 +94,7 @@ get_while(P, [Ch | Rest]) ->
     case P(Ch) of
         true ->
             {Succeeds, Remainder} = get_while(P, Rest),
-            {[Ch, Succeeds], Remainder};
+            {[Ch | Succeeds], Remainder};
         false ->
             {[], [Ch | Rest]}
     end;
@@ -132,6 +158,8 @@ simplify({mul, {num, 1}, E}) -> E;
 simplify({mul, E, {num, 1}}) -> E;
 simplify({mul, {num, 0}, _}) -> {num, 0};
 simplify({mul, _, {num, 0}}) -> {num, 0};
+simplify({add, {var, _}, {var, _}}=E) -> E;
+simplify({mul, {var, _}, {var, _}}=E) -> E;
 simplify({add, {num, N1}, {num, N2}}) -> 
     {num, N1 + N2};
 simplify({mul, {num, N1}, {num, N2}}) -> 
@@ -152,15 +180,13 @@ simplify({mul, {mul, {num, N2}, {var, V}}, {num, N1}}) ->
     {mul, {num, N1 * N2}, {var, V}};
 simplify({mul, {mul, {var, V}, {num, N2}}, {num, N1}}) -> 
     {mul, {num, N1 * N2}, {var, V}};
-simplify({O, {num, N}, {var, V}}) -> 
-    {O, {num, N}, {var, V}};
-simplify({O, {var, V}, {num, N}}) -> 
-    {O, {num, N}, {var, V}};
-simplify({O, E1, E2}) ->
+simplify({_, {num, _}, {var, _}}=E) -> E;
+simplify({_, {var, _}, {num, _}}=E) -> E;
+simplify({O, E1, E2}=E) ->
     SE1 = simplify(E1),
     SE2 = simplify(E2),
     case {SE1, SE2} of
-        {E1, E2} -> {O, E1, E2};
+        {E1, E2} -> E;
         _ -> simplify({O, SE1, SE2})
     end;
 simplify(E) ->
